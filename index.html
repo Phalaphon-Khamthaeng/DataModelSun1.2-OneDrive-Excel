@@ -487,8 +487,27 @@
             </div>
         </header>
 
-
-
+        <!-- คำแนะนำการตั้งค่า SharePoint/OneDrive Link -->
+        <div class="config-section" id="configSection">
+            <h3>⚙️ วิธีตั้งค่า SharePoint/OneDrive Link (สำหรับองค์กร)</h3>
+            <p><strong>📌 วิธีที่ 1: SharePoint Link (แนะนำสำหรับองค์กร)</strong></p>
+            <ol>
+                <li>อัพโหลดไฟล์ Excel ขึ้น <strong>SharePoint</strong> หรือ <strong>OneDrive for Business</strong></li>
+                <li>คลิกขวาที่ไฟล์ → <strong>Share</strong> → เลือก <strong>"Anyone with the link can view"</strong></li>
+                <li>คัดลอก Link ที่ได้ (จะเป็นแบบ: <code>https://company.sharepoint.com/...</code>)</li>
+                <li><strong>เพิ่ม <code>?download=1</code> ต่อท้าย URL</strong></li>
+                <li>ตัวอย่าง:<br><code>https://sunvending.sharepoint.com/:x:/g/personal/.../file.xlsx?download=1</code></li>
+                <li>นำ Link นี้มาใส่ในโค้ดที่บรรทัด <strong>549</strong></li>
+            </ol>
+            
+            <p style="margin-top: 1rem;"><strong>📌 วิธีที่ 2: OneDrive Personal (สำหรับบัญชีส่วนตัว)</strong></p>
+            <ol>
+                <li>อัพโหลดไฟล์ไปที่ <strong>OneDrive.live.com</strong></li>
+                <li>Share → "Anyone can view" → คัดลอก Link</li>
+                <li>ใช้เครื่องมือ <strong>link-converter.html</strong> แปลงเป็น Direct Link</li>
+                <li>นำ Direct Link มาใส่ในโค้ด</li>
+            </ol>
+        </div>
 
         <div class="stats-grid">
             <div class="stat-card">
@@ -537,11 +556,13 @@
         let filteredData = [];
         let selectedIndex = -1;
 
-        // ⚠️ ใส่ OneDrive Direct Download Link ของคุณที่นี่
-       // const EXCEL_URL = 'https://sun108-my.sharepoint.com/:x:/g/personal/phalaphon_k_sunvending_co_th/IQDl8sn5-8aCSZs-AGcFwvWXAWKbD8O3SIg3O6zhxJ5mJMM?e=BoJbhb?download=1';
+        // ใส่ SharePoint Link ของคุณที่นี่
         const EXCEL_URL = 'https://sun108-my.sharepoint.com/:x:/g/personal/phalaphon_k_sunvending_co_th/IQDl8sn5-8aCSZs-AGcFwvWXAY9Il86EayhzuzCDvj-0kJM?e=lkNHeC&download=1';
+        
+        // ถ้า Link ข้างบนไม่ทำงาน ลองใช้ Link นี้แทน:
+        // const EXCEL_URL = 'https://sun108-my.sharepoint.com/personal/phalaphon_k_sunvending_co_th/_layouts/15/download.aspx?share=IQDl8sn5-8aCSZs-AGcFwvWXAY9Il86EayhzuzCDvj-0kJM';
 
-        // โหลดข้อมูลจาก OneDrive Excel
+        // โหลดข้อมูลจาก SharePoint/OneDrive Excel
         async function loadExcelData() {
             const syncStatus = document.getElementById('syncStatus');
             const syncText = document.getElementById('syncText');
@@ -550,16 +571,23 @@
 
             try {
                 syncStatus.className = 'sync-status loading';
-                syncText.textContent = 'กำลังโหลดจาก OneDrive...';
+                syncText.textContent = 'กำลังโหลดจาก SharePoint/OneDrive...';
 
-                if (EXCEL_URL === 'YOUR_ONEDRIVE_DIRECT_DOWNLOAD_LINK_HERE') {
-                    throw new Error('กรุณาตั้งค่า OneDrive Link ในโค้ดก่อน! (ดูคำแนะนำด้านบน)');
+                if (EXCEL_URL.includes('YOUR_SHAREPOINT') || EXCEL_URL.includes('YOUR_ONEDRIVE')) {
+                    throw new Error('กรุณาตั้งค่า SharePoint/OneDrive Link ในโค้ดก่อน! (ดูคำแนะนำด้านบน)');
                 }
 
-                const response = await fetch(EXCEL_URL);
+                const response = await fetch(EXCEL_URL, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'omit',
+                    headers: {
+                        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    }
+                });
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    throw new Error(`HTTP error! status: ${response.status} - ตรวจสอบว่า Link เป็น Public และมี ?download=1 ท้าย URL`);
                 }
 
                 const arrayBuffer = await response.arrayBuffer();
@@ -578,7 +606,7 @@
                 syncStatus.className = 'sync-status success';
                 syncText.textContent = `โหลดสำเร็จ ${allData.length} รายการ`;
                 loadingOverlay.style.display = 'none';
-                configSection.style.display = 'none';
+                configSection.style.display = 'none'; // ซ่อนคำแนะนำเพราะ Link ตั้งค่าเรียบร้อยแล้ว
 
                 displayResults();
                 updateStats();
