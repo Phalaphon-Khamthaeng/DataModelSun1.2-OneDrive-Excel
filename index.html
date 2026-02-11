@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Conversion Finder - OneDrive Version</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #e30613;
+            --accent: #ff1744;
+            --accent-glow: #ff174433;
+            --secondary: #ff6b35;
+            --bg: #f8f9fa;
+            --surface: #ffffff;
+            --surface-light: #f5f5f5;
+            --text: #2d3436;
+            --text-dim: #636e72;
+            --border: #e1e8ed;
+            --success: #00b894;
+            --warning: #fdcb6e;
+            --shadow: rgba(0, 0, 0, 0.08);
+            --shadow-hover: rgba(227, 6, 19, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            font-size: 13px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0.5rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 0.75rem;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.2rem, 3.5vw, 1.8rem);
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--accent), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.15rem;
+            letter-spacing: -0.02em;
+            text-transform: uppercase;
+        }
+
+        .main-title {
+            font-family: 'Sarabun', sans-serif;
+            font-size: clamp(1.4rem, 4vw, 2.2rem);
+            font-weight: 700;
+            background: linear-gradient(135deg, #e30613, #ff6b35, #ffa500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.02em;
+            text-shadow: 0 2px 4px rgba(227, 6, 19, 0.1);
+            padding: 0.5rem 0;
+            border-bottom: 3px solid transparent;
+            border-image: linear-gradient(90deg, #e30613, #ff6b35, #ffa500) 1;
+        }
+
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            font-weight: 300;
+        }
+
+        .sync-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            margin-top: 0.3rem;
+            padding: 0.2rem 0.5rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 0.7rem;
+        }
+
+        .sync-status.loading { color: var(--warning); }
+        .sync-status.success { color: var(--success); }
+        .sync-status.error { color: var(--secondary); }
+
+        .search-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.6rem;
+            margin-bottom: 0.6rem;
+            box-shadow: 0 1px 8px var(--shadow);
+        }
+
+        .input-group {
+            position: relative;
+        }
+
+        label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 0.3rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 0.5rem 2rem 0.5rem 0.7rem;
+            font-size: 0.8rem;
+            font-family: 'Sarabun', sans-serif;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface);
+            color: var(--text);
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-glow);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 0.6rem;
+            bottom: 0.5rem;
+            color: var(--text-dim);
+            pointer-events: none;
+            font-size: 0.9rem;
+        }
+
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            border-radius: 6px;
+            margin-top: 0.3rem;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 16px var(--shadow-hover);
+            display: none;
+        }
+
+        .autocomplete-dropdown.active {
+            display: block;
+        }
+
+        .autocomplete-item {
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-item:hover,
+        .autocomplete-item.selected {
+            background: var(--surface-light);
+        }
+
+        .autocomplete-main {
+            flex: 1;
+        }
+
+        .autocomplete-title {
+            font-weight: 600;
+            color: var(--text);
+            font-size: 0.8rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .autocomplete-meta {
+            display: flex;
+            gap: 0.3rem;
+            flex-wrap: wrap;
+        }
+
+        .autocomplete-tag {
+            background: var(--surface-light);
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+            font-size: 0.65rem;
+            color: var(--text-dim);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 0.5rem;
+            margin-bottom: 0.6rem;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.5rem;
+            text-align: center;
+            box-shadow: 0 1px 4px var(--shadow);
+        }
+
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 0.2rem;
+        }
+
+        .stat-label {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            padding: 0 0.3rem;
+        }
+
+        .results-info {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            font-weight: 600;
+        }
+
+        .result-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.7rem;
+            margin-bottom: 0.6rem;
+            box-shadow: 0 1px 4px var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .result-card:hover {
+            box-shadow: 0 2px 12px var(--shadow-hover);
+            transform: translateY(-1px);
+        }
+
+        .model-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .model-name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .model-year {
+            background: var(--accent);
+            color: white;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .model-info {
+            margin-bottom: 0.5rem;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.3rem 0;
+            font-size: 0.75rem;
+        }
+
+        .info-label {
+            color: var(--text-dim);
+            font-weight: 600;
+        }
+
+        .info-value {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .conversion-section {
+            background: linear-gradient(135deg, #e3061310, #ff6b3510);
+            border-radius: 6px;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .conversion-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 0.4rem;
+        }
+
+        .conversion-grid {
+            display: grid;
+            gap: 0.3rem;
+        }
+
+        .conversion-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.3rem;
+            background: var(--surface);
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .conversion-label {
+            color: var(--text-dim);
+            font-weight: 600;
+        }
+
+        .conversion-value {
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .no-conversion {
+            text-align: center;
+            padding: 0.6rem;
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            background: var(--surface-light);
+            border-radius: 6px;
+            margin-top: 0.5rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem 1rem;
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state-text {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .loading-content {
+            text-align: center;
+        }
+
+        .spinner {
+            border: 4px solid var(--border);
+            border-top: 4px solid var(--accent);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .config-section {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .config-section h3 {
+            color: #856404;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .config-section p {
+            color: #856404;
+            font-size: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .config-section code {
+            background: white;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            color: #d63384;
+            word-break: break-all;
+        }
+
+        .config-section ol {
+            margin-left: 1.2rem;
+            font-size: 0.75rem;
+            color: #856404;
+        }
+
+        .config-section li {
+            margin-bottom: 0.3rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p style="color: var(--text-dim); font-size: 0.9rem;">กำลังโหลดข้อมูลจาก OneDrive...</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1 class="main-title">🔍 Model Conversion Finder</h1>
+            <p class="subtitle">ค้นหาข้อมูลการแปลงรุ่นเครื่องจักร - OneDrive Version</p>
+            <div class="sync-status" id="syncStatus">
+                <span>●</span>
+                <span id="syncText">รอโหลดข้อมูล...</span>
+            </div>
+        </header>
+
+        <!-- คำแนะนำการตั้งค่า OneDrive Link -->
+        <div class="config-section" id="configSection">
+            <h3>⚙️ วิธีตั้งค่า OneDrive Link</h3>
+            <p><strong>ทำตามขั้นตอนนี้เพื่อให้โค้ดทำงานได้:</strong></p>
+            <ol>
+                <li>อัพโหลดไฟล์ Excel ขึ้น <strong>OneDrive</strong></li>
+                <li>คลิกขวาที่ไฟล์ → <strong>Share</strong> → เลือก <strong>"Anyone with the link can view"</strong></li>
+                <li>คัดลอก Link ที่ได้ (จะเป็นแบบ: <code>https://1drv.ms/x/s!...</code>)</li>
+                <li>แปลง Link ด้วยเครื่องมือ: <a href="https://www.syncwithtech.org/onedrive-direct-download-link-generator/" target="_blank">OneDrive Direct Link Generator</a></li>
+                <li>นำ Direct Download Link มาใส่ในโค้ดที่บรรทัด <strong>549</strong> (แทนที่ <code>EXCEL_URL</code>)</li>
+            </ol>
+            <p style="margin-top: 0.5rem;"><strong>ตัวอย่าง Direct Link:</strong><br>
+            <code>https://api.onedrive.com/v1.0/shares/u!.../root/content</code></p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalModels">0</div>
+                <div class="stat-label">รุ่นทั้งหมด</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="resultCount">0</div>
+                <div class="stat-label">ผลลัพธ์</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="conversionCount">0</div>
+                <div class="stat-label">มีการแปลง</div>
+            </div>
+        </div>
+
+        <div class="search-section">
+            <div class="input-group">
+                <label for="searchModel">🔍 ค้นหารุ่นเครื่อง</label>
+                <input 
+                    type="text" 
+                    id="searchModel" 
+                    placeholder="พิมพ์ชื่อรุ่น Series หรือ Machine Type..."
+                    autocomplete="off"
+                >
+                <span class="search-icon">🔎</span>
+                <div class="autocomplete-dropdown" id="autocompleteDropdown"></div>
+            </div>
+        </div>
+
+        <div class="results-header">
+            <h2 style="font-size: 0.9rem; font-weight: 700; color: var(--text);">📋 ผลการค้นหา</h2>
+            <span class="results-info" id="resultsInfo">กำลังโหลด...</span>
+        </div>
+
+        <div id="resultsContainer">
+            <div class="empty-state">
+                <div class="empty-state-icon">⏳</div>
+                <p class="empty-state-text">กำลังโหลดข้อมูล...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allData = [];
+        let filteredData = [];
+        let selectedIndex = -1;
+
+        // ⚠️ ใส่ OneDrive Direct Download Link ของคุณที่นี่
+        const EXCEL_URL = 'https://api.onedrive.com/v1.0/shares/u!aHR0cHM6Ly9zdW4xMDgtbXkuc2hhcmVwb2ludC5jb20vOng6L2cvcGVyc29uYWwvcGhhbGFwaG9uX2tfc3VudmVuZGluZ19jb190aC9JUURsOHNuNS04YUNTWnMtQUdjRnd2V1hBV0tiRDhPM1NJZzNPNnpoeEo1bUpNTT9lPTE1NW9icA/root/content';
+
+        // โหลดข้อมูลจาก OneDrive Excel
+        async function loadExcelData() {
+            const syncStatus = document.getElementById('syncStatus');
+            const syncText = document.getElementById('syncText');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const configSection = document.getElementById('configSection');
+
+            try {
+                syncStatus.className = 'sync-status loading';
+                syncText.textContent = 'กำลังโหลดจาก OneDrive...';
+
+                if (EXCEL_URL === 'YOUR_ONEDRIVE_DIRECT_DOWNLOAD_LINK_HERE') {
+                    throw new Error('กรุณาตั้งค่า OneDrive Link ในโค้ดก่อน! (ดูคำแนะนำด้านบน)');
+                }
+
+                const response = await fetch(EXCEL_URL);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const arrayBuffer = await response.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                
+                // อ่าน Sheet แรก
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // แปลงเป็น JSON
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                
+                allData = jsonData;
+                filteredData = [...allData];
+
+                syncStatus.className = 'sync-status success';
+                syncText.textContent = `โหลดสำเร็จ ${allData.length} รายการ`;
+                loadingOverlay.style.display = 'none';
+                configSection.style.display = 'none';
+
+                displayResults();
+                updateStats();
+
+            } catch (error) {
+                console.error('Error loading Excel:', error);
+                syncStatus.className = 'sync-status error';
+                syncText.textContent = 'โหลดข้อมูลไม่สำเร็จ!';
+                loadingOverlay.style.display = 'none';
+                
+                document.getElementById('resultsContainer').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <p class="empty-state-text">ไม่สามารถโหลดข้อมูลจาก OneDrive ได้</p>
+                        <p style="margin-top: 0.5rem; color: var(--secondary); font-size: 0.75rem;">
+                            ${error.message}
+                        </p>
+                        <p style="margin-top: 0.5rem; color: var(--text-dim); font-size: 0.75rem;">
+                            กรุณาตรวจสอบ OneDrive Link และทำตามคำแนะนำด้านบน
+                        </p>
+                    </div>
+                `;
+            }
+        }
+
+        // เริ่มต้นเมื่อโหลดหน้าเว็บ
+        document.addEventListener('DOMContentLoaded', () => {
+            loadExcelData();
+
+            const searchInput = document.getElementById('searchModel');
+            const dropdown = document.getElementById('autocompleteDropdown');
+
+            searchInput.addEventListener('input', handleSearchInput);
+            searchInput.addEventListener('keydown', handleKeyDown);
+            
+            document.addEventListener('click', (e) => {
+                if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.remove('active');
+                }
+            });
+        });
+
+        function handleSearchInput(e) {
+            const searchText = e.target.value.trim();
+            selectedIndex = -1;
+
+            searchData();
+
+            if (searchText.length < 1) {
+                document.getElementById('autocompleteDropdown').classList.remove('active');
+                return;
+            }
+
+            showAutocomplete(searchText.toLowerCase());
+        }
+
+        function handleKeyDown(e) {
+            const dropdown = document.getElementById('autocompleteDropdown');
+            const items = dropdown.querySelectorAll('.autocomplete-item');
+
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (dropdown.classList.contains('active') && selectedIndex >= 0 && items.length > 0) {
+                    items[selectedIndex].click();
+                } else {
+                    dropdown.classList.remove('active');
+                    searchData();
+                }
+                return;
+            }
+
+            if (!dropdown.classList.contains('active') || items.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+                updateSelected(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedIndex = Math.max(selectedIndex - 1, 0);
+                updateSelected(items);
+            } else if (e.key === 'Escape') {
+                dropdown.classList.remove('active');
+            }
+        }
+
+        function showAutocomplete(search) {
+            const dropdown = document.getElementById('autocompleteDropdown');
+            
+            const matches = allData.filter(item => {
+                const model = (item["Model"] || "").toLowerCase();
+                return model.includes(search);
+            }).slice(0, 10);
+
+            if (matches.length === 0) {
+                dropdown.classList.remove('active');
+                return;
+            }
+
+            dropdown.innerHTML = matches.map((item, index) => {
+                return `
+                    <div class="autocomplete-item" onclick="selectModel('${item["Model"]}')" data-index="${index}">
+                        <div class="autocomplete-main">
+                            <div class="autocomplete-title">${highlightText(item["Model"] || 'N/A', search)}</div>
+                            <div class="autocomplete-meta">
+                                ${item["Series"] ? `<span class="autocomplete-tag">${item["Series"]}</span>` : ''}
+                                ${item["Machine Type"] ? `<span class="autocomplete-tag">${item["Machine Type"]}</span>` : ''}
+                                ${item["Model Year"] ? `<span class="autocomplete-tag">${item["Model Year"]}</span>` : ''}
+                            </div>
+                        </div>
+                        ${hasConversions(item) ? '<span style="color: var(--success);">✓</span>' : ''}
+                    </div>
+                `;
+            }).join('');
+            
+            dropdown.classList.add('active');
+        }
+
+        function highlightText(text, search) {
+            if (!search) return text;
+            const regex = new RegExp(`(${search})`, 'gi');
+            return text.replace(regex, '<span style="background: var(--accent); color: white; padding: 0 0.2rem; border-radius: 3px;">$1</span>');
+        }
+
+        function hasConversions(item) {
+            return item["Smart Model"];
+        }
+
+        function updateSelected(items) {
+            items.forEach((item, index) => {
+                if (index === selectedIndex) {
+                    item.classList.add('selected');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        }
+
+        function selectModel(modelName) {
+            const searchInput = document.getElementById('searchModel');
+            const dropdown = document.getElementById('autocompleteDropdown');
+            
+            searchInput.value = modelName;
+            dropdown.classList.remove('active');
+            searchData();
+        }
+
+        function searchData() {
+            const searchText = document.getElementById('searchModel').value.trim();
+
+            if (searchText.length === 0) {
+                filteredData = [...allData];
+            } else {
+                const searchLower = searchText.toLowerCase();
+                filteredData = allData.filter(item => {
+                    const model = (item["Model"] || "").toLowerCase();
+                    const series = (item["Series"] || "").toLowerCase();
+                    const machineType = (item["Machine Type"] || "").toLowerCase();
+                    const smartModel = (item["Smart Model"] || "").toLowerCase();
+                    
+                    return model.includes(searchLower) || 
+                           series.includes(searchLower) || 
+                           machineType.includes(searchLower) ||
+                           smartModel.includes(searchLower);
+                });
+            }
+
+            displayResults();
+            updateStats();
+        }
+
+        function displayResults() {
+            const container = document.getElementById('resultsContainer');
+            const resultsInfo = document.getElementById('resultsInfo');
+
+            if (filteredData.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">😔</div>
+                        <p class="empty-state-text">ไม่พบผลลัพธ์ที่ตรงกับการค้นหา</p>
+                        <p style="margin-top: 0.5rem; color: var(--text-dim); font-size: 0.85rem;">
+                            ลองเปลี่ยนคำค้นหาใหม่
+                        </p>
+                    </div>
+                `;
+                resultsInfo.textContent = 'ไม่พบผลลัพธ์';
+                return;
+            }
+
+            resultsInfo.textContent = `แสดง ${filteredData.length} รายการ`;
+
+            container.innerHTML = filteredData.map((item, index) => {
+                return `
+                <div class="result-card">
+                    <div class="model-header">
+                        <h3 class="model-name">${item["Model"] || 'N/A'}</h3>
+                        ${item["Model Year"] ? `<span class="model-year">${item["Model Year"]}</span>` : ''}
+                    </div>
+                    
+                    <div class="model-info">
+                        ${item["Machine Type"] ? `
+                        <div class="info-row">
+                            <span class="info-label">Machine Type:</span>
+                            <span class="info-value">${item["Machine Type"]}</span>
+                        </div>` : ''}
+                        ${item["Series"] ? `
+                        <div class="info-row">
+                            <span class="info-label">Series:</span>
+                            <span class="info-value">${item["Series"]}</span>
+                        </div>` : ''}
+                        ${item["Recommend"] && item["Recommend"].toLowerCase() === 'yes' ? `
+                        <div class="info-row">
+                            <span class="info-label">สถานะ:</span>
+                            <span class="badge badge-success">Recommended</span>
+                        </div>` : ''}
+                    </div>
+
+                    ${item["Smart Model"] ? `
+                    <div class="conversion-section">
+                        <h4 class="conversion-title">🔄 สามารถแปลงเป็น</h4>
+                        <div class="conversion-grid">
+                            <div class="conversion-item">
+                                <span class="conversion-label">Smart Model:</span>
+                                <span class="conversion-value">${item["Smart Model"]}</span>
+                            </div>
+                        </div>
+                    </div>
+                    ` : `
+                    <div class="no-conversion">
+                        ⚠️ ไม่มีข้อมูลการแปลง
+                    </div>
+                    `}
+                </div>
+            `}).join('');
+        }
+
+        function updateStats() {
+            document.getElementById('totalModels').textContent = allData.length;
+            document.getElementById('resultCount').textContent = filteredData.length;
+            
+            const modelsWithConversion = filteredData.filter(item => {
+                return item["Smart Model"];
+            }).length;
+            
+            document.getElementById('conversionCount').textContent = modelsWithConversion;
+        }
+    </script>
+</body>
+</html>
