@@ -488,7 +488,7 @@
         </header>
 
         <!-- คำแนะนำการตั้งค่า SharePoint/OneDrive Link -->
-        <div class="config-section" id="configSection">
+        <div class="config-section" id="configSection" style="display: none;">
             <h3>⚙️ วิธีตั้งค่า SharePoint/OneDrive Link (สำหรับองค์กร)</h3>
             <p><strong>📌 วิธีที่ 1: SharePoint Link (แนะนำสำหรับองค์กร)</strong></p>
             <ol>
@@ -698,7 +698,7 @@
             
             const matches = allData.filter(item => {
                 const model = (item["Model"] || "").toLowerCase();
-                return model.includes(search);
+                return model.startsWith(search);
             }).slice(0, 10);
 
             if (matches.length === 0) {
@@ -768,10 +768,10 @@
                     const machineType = (item["Machine Type"] || "").toLowerCase();
                     const smartModel = (item["Smart Model"] || "").toLowerCase();
                     
-                    return model.includes(searchLower) || 
-                           series.includes(searchLower) || 
-                           machineType.includes(searchLower) ||
-                           smartModel.includes(searchLower);
+                    return model.startsWith(searchLower) || 
+                           series.startsWith(searchLower) || 
+                           machineType.startsWith(searchLower) ||
+                           smartModel.startsWith(searchLower);
                 });
             }
 
